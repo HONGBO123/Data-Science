@@ -1,0 +1,227 @@
+---
+title: "Assignment 2"
+output:
+  pdf_document: default
+  beamer_presentation: default
+  html_document:
+    df_print: paged
+author: "Mayur Andhare"
+date: "September 17, 2018"
+---
+
+
+```{r setup, echo=TRUE, warning=FALSE, message=FALSE} 
+    library(ggplot2)  
+    library(dplyr)
+    library(grid)
+    library(gridExtra)
+```    
+
+* 1.
+* **(a) Use the read.csv() function to read the data into R. Call the loaded data college. Make sure that you have the directory set to the correct location for the data.**
+```{r warning=FALSE}
+    college <- read.csv("https://scads.eecs.wsu.edu/wp-content/uploads/2017/09/College.csv")
+```
+
+* **(b) Eliminate First Row and fix it**
+```{r warning=FALSE}
+    rownames(college) <- college[,1]
+    college <- college[,-1]
+```
+* **(c) i. Use the summary() function to produce a numerical summary of the variables in the data set. (Respond to this question with the mean graduation rate included in the summary result).**
+
+**Mean Graduation Rate**
+```{r warning=FALSE}
+    summary(college[,18])[4]
+```
+
+**ii. Use the pairs() function to produce a scatterplot matrix of the first ten columns or variables of the data.**
+
+```{r}
+    pairs(college[,1:10])
+```
+
+**iii. Use the plot() function to produce side-by-side boxplots of Outstate versus Private.**
+
+```{r warning=FALSE}
+    ggplot(college, aes(x = Private, y = Outstate)) +
+      geom_boxplot(color = "black", fill = "grey") +
+      theme_light() +
+      labs(x = "Private", y = "Outstate", title = "Outstate vs Private")
+```
+
+**iv. Create a new qualitative variable, called Top, by binning the Top25perc variable. We are going to divide universities into two groups based on whether or not the proportion of students coming from the top 25% of their high school classes exceeds 50%.**
+
+```{r}
+    Top <- rep("No", nrow(college))
+    Top[college$Top25perc > 50] <- "Yes"
+    Top <- as.factor(Top)
+    college <- data.frame(college, Top)
+```
+
+**Use the summary() function to see how many top universities there are.** 
+
+```{r warning=FALSE}
+    summary(college$Top)
+```
+
+**Now use the plot() or boxplot() function to produce side-by-side boxplots of Outstate with respect to the two Top categories (Yes and No). Ensure that this figure has an appropriate title and axis labels.**
+
+```{r warning=FALSE}
+    ggplot(college, aes(Top, Outstate)) +
+    geom_boxplot(col = c("red", "blue")) +
+    theme_light() +
+    labs(title = "Outstate vs Top")
+```
+
+**v.** Produce some histograms with differing numbers of bins for a few of the quantitative variables. divide the screen into different parts. Again, ensure that this figure has an appropriate title and axis labels.
+
+```{r warning=FALSE}
+    a <- qplot(PhD, data = college, fill=Private, binwidth = 25, 
+                                    main = "# of PhD in Private/Public Schools")
+    b <- qplot(Enroll, data=college, fill=Top, binwidth = 250, 
+                                    main = "Number of enrollments")
+    c <- qplot(perc.alumni,data=college, fill=I("Blue"), binwidth = 5,
+                                    main="Percent of alumini donate", xlab = "Alumni Percentage")
+    d <- qplot(S.F.Ratio, data = college, fill=Private, binwidth = 3, 
+                                    main = "Student to Faculty Ratio")
+    grid.arrange(a, b, c, d)
+```
+
+**vi.** Continue exploring the data, and provide a brief summary of what you discover. You may use additional plots or numerical descriptors as needed. Perhaps try plotting various features from the dataset against each other and see if any patterns emerge.
+
+```{r warning=FALSE}
+    g <- ggplot(college, aes(x = Grad.Rate, y = Top25perc, fill = Private, color = Private)) +
+        theme_light() + labs(x = "Graduation Rate", y = "Top 25 percent", title="Graduation Rate")
+    g + geom_point(binwidth = 500) + geom_smooth(method = lm)
+    
+```
+
+In above graph, we can deduce Graduation Rate with students coming from Top 25% of their high school classes
+have simiar graduation rate curve in Private and public Colleges. 
+Red line indicates Public college graduation rate of students coming from Top 25% exceeds 50%.
+
+
+
+
+
+```{r warning=FALSE}
+        qplot(Enroll, Apps, data=college, color=Private, geom = c("point", "smooth"), 
+          method = "lm", main="Number of Application Acceptance", ylab = "Applications")
+```
+
+* Above graph shows Number of Applications and Enrollment in Private and Public color coding. 
+* In Private colleges number of applications and enrollment curve is higher than Public colleges.
+* But, with the similar number of applicants actually interested in Public colleges. As we can see from graph, there are actually more enrollments from 4500 in Public collges (in Red Color).
+* OUTLIERs - 
+* * one college has somewhere around 48000 applicants but enrollment is ~ 4500 which is less as compare with other colleges.(Red point)
+```{r}
+    college[college$Apps > 45000, ]
+```
+
+* * one college has somewhere around 7500 applicants but enrollment is ~ 4700 which is more as compare with other private colleges.(Green point)
+
+```{r}
+    college[college$Enroll > 4600 & college$Private == "Yes", ]
+```
+*Overall students enrollments are more in Public colleges with similar counts of applications.*
+
+
+* **2. This exercise involves the Auto.csv data set found on the course website. Make sure that the missing values have been removed from the data. To do this, consider the na.strings parameter of read.csv(), as well as the na.omit() function**
+
+```{r}
+    Auto <- read.csv("https://scads.eecs.wsu.edu/wp-content/uploads/2017/09/Auto.csv", 
+                     na.strings = '?' )
+    Auto <- na.omit(Auto)
+```
+
+**(a)** Which of the predictors are quantitative, and which are qualitative?
+
+```{r}
+    numeric_Auto <- Auto[sapply(Auto, is.numeric)]
+    colnames(numeric_Auto)
+```
+
+**(b)** What is the range of each quantitative predictor? You can answer this using the range() function. Hint: consider using R’s sapply() function to take the range of multiple features in a single function call.
+
+```{r}
+    range_auto <- sapply(numeric_Auto, range)
+    range_auto
+```
+
+**(c)** What is the mean and standard deviation of each quantitative predictor?
+
+```{r}
+    mean_auto <- sapply(numeric_Auto, mean)
+    mean_auto
+
+    sd_auto <- sapply(numeric_Auto, sd)
+    sd_auto
+```
+
+**(d)** Now remove the 25th through 75th observations. What is the range, mean, and standard deviation of each predictor in the subset of the data that remains?
+
+```{r}
+    remain_data <- numeric_Auto[-c(25 : 74), ]
+    
+    remain_range_auto <- sapply(remain_data, range)
+    remain_range_auto
+    
+    remain_mean_auto <- sapply(remain_data, mean)
+    remain_mean_auto
+    
+    remain_sd_auto <- sapply(remain_data, sd)
+    remain_sd_auto
+```
+
+(e) Using the full data set, investigate the predictors graphically, using scatterplots or other tools of your choice. Create some plots highlighting the relationships among the predictors. Comment on your findings.
+
+```{r}
+    p <- qplot(weight, horsepower, data = Auto, col = I("red"), 
+                          main = "Weight vs. Horsepower")
+    p
+```
+
+* As we can infer from above plot, more the horsepower, more the weight. scatterpoints are almost linear weight with horsepower. 
+* But the best one with these two parameter is horsepower of ~ 225 and weight of ~ 3100. 
+Although we have one more with high horsepower but the weight is more. So we are considering both factors.
+
+we can get the remaining information of that build --> 
+```{r fig.width=10}
+      Auto[Auto$horsepower >= 225 & Auto$weight < 3100, c(1,2,3,4,5,6,9)]
+```
+
+
+```{r}
+      q <- qplot(acceleration, horsepower, data = Auto, col = I("blue"), 
+                          main = "Acceleration vs. Horsepower")
+      q
+```
+
+* we can infer from above graph that horsepower and acceleration has inverse relation.
+* More the acceleration lower its horsepower.
+* we can see, accelration between 7 to 17 and horsepower between 60-120 is dense area. which could be best possible acceleration and horsepower combination. As Acceleration is not the highest and horsepower also not much greater.
+* This could be best in selling point of view.
+
+
+(f) Suppose that we wish to predict gas mileage (mpg) on the basis of the other variables. Do your plots suggest that any of the other variables might be useful in predicting mpg? Justify your answer.
+
+```{r}
+    cylinder_factor <- as.factor(Auto$cylinders)
+    Auto <- data.frame(Auto, cylinder_factor)
+    g <- ggplot(Auto, aes(x = mpg, y = horsepower)) + theme_light()
+    mpg_horsepower <- g + geom_point(col = c("blue")) + 
+                    labs(title = "Mileage with Horsepower")
+    mpg_horsepower
+    
+    mpg_cyl <- ggplot(Auto, aes(x = mpg, fill = cylinder_factor)) + theme_light() +
+                geom_histogram(bins = 50) + 
+                labs(title = "Mileage with Cylinders", fill = "Cylinders")
+    mpg_cyl
+```
+
+* As we infer from Mileage with Horsepower, Mileage and horsepower is inversely proportion.
+* so we can predict more the mileage, less its horsepower and vice-versa.
+* From graph Mileage with Cylinder, we can say, Cylinder of type 4 (green) has the high mileage and Cylinder of type 8 has the lowest.
+* so if cylinder of type 5 < 4 < 3, in increasing order, we can predict mileage with 3 being the highest prediction for mileage from 30, but more surely from 40. So if mileage is 45, then its type 3 Cylinder.
+* same with Cylinder of type 6 and 8, we can say it will have lowest mileage till 20.

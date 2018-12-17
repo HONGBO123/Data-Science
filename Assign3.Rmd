@@ -1,0 +1,287 @@
+---
+title: "Assignment 3"
+author: "MAYUR ANDHARE"
+date: "9/27/2018"
+output:
+  pdf_document:
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 7
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=TRUE, warning=FALSE, message=FALSE} 
+    library(ggplot2)  
+    library(dplyr)
+    library(grid)
+    library(gridExtra)
+    library(dplyr)
+    library(tidyr)
+    library(knitr)
+```    
+> Que - 1
+
+```{r echo = FALSE, results = 'asis'}
+
+    msleep <- read.csv("https://scads.eecs.wsu.edu/wp-content/uploads/2017/10/msleep_ggplot2.csv")
+    # start que
+    kable(head(select(msleep, starts_with("sleep"))), caption = "SLEEP DATA")
+```
+
+**a) Use filter() to count the number of animals which weigh over 50 kilograms and sleep more than 6 hours a day**
+
+```{r echo = FALSE, results = 'asis'}
+
+    kable(filter(msleep, sleep_total > 6, bodywt > 50), caption = "SLEEP > 6 and BODY_WT > 50")
+```
+    
+    Count -> 
+```{r}
+    nrow(filter(msleep, sleep_total > 6, bodywt > 50))
+```
+    
+
+**b) Use piping (%>%), select() and arrange() to print the name, order, sleep time and bodyweight of the animals with the top 6 sleep times, in order of sleep time.**
+
+```{r}
+    kable(msleep %>%
+    select(name, order, sleep_total, bodywt) %>%
+    arrange(sleep_total) %>%
+    head(6), caption = "table")
+```
+
+**c) Use mutate to add two new columns to the dataframe; wt_ratio with the ratio of brain size to body weight, rem_ratio with the ratio of rem sleep to sleep time. If you think they might be useful, feel free to extract more features than these, and describe what they are.**
+
+```{r}
+    msleep %>%
+          mutate(wt_ratio = brainwt / bodywt, 
+          rem_ratio = sleep_rem / sleep_total,
+          bodywt_gram = bodywt * 1000) %>%
+    head
+```
+
+**d) Use group_by() and summarize() to display the average, min and max sleep times for each order. Remember to use ungroup() when you are done.**
+
+```{r}
+    kable(msleep %>%
+            group_by(order) %>%
+            summarise(avg_sleep = mean(sleep_total),
+                      min_sleep = min(sleep_total),
+                      max_sleep = max(sleep_total), 
+                      total = n()) %>%
+            ungroup(), caption = "Summarize")
+```
+
+**e) i) Make a copy of your dataframe, and use group_by() and mutate() to impute the missing brain weights as the average wt_ratio for that animal’s order times the animal’s weight.**
+
+```{r}
+
+  msleep_a <- msleep %>%
+  group_by(order) %>%
+  mutate(brainwt = ifelse(is.na(brainwt), 
+                          (mean(brainwt, na.rm = TRUE) / mean(bodywt, na.rm = TRUE)) * bodywt , 
+                          brainwt))
+  
+  kable(head(msleep_a %>% select(-starts_with("sleep"), -vore), 10), 
+        caption = "avg weight ratio * weight")
+```
+
+**ii) use group_by() and mutate() to impute missing brain weights with the average brain weight for that animal’s order**
+
+```{r}
+  msleep_b <- msleep %>%
+  group_by(order) %>%
+  mutate(brainwt = ifelse(is.na(brainwt), 
+                          mean(brainwt, na.rm = TRUE), 
+                          brainwt))
+  
+  kable(head(msleep_b %>% select(-starts_with("sleep"), -vore), 10), 
+        caption = "avg brain weight")
+
+```
+
+I think first method of replacing brain weight is better. As logically speaking brain weight and body weight is somewhat proportional. Even if it is not entirely true. 
+But, here we are replacing animals brain weight as per their order's mean of brain and body weight. So this will hold true, for most of the cases.
+
+**Que 2**
+
+```{r}
+    kable(head(who, 10), caption = "WHO TB dataset")
+```
+```{r}
+  who_final <- who %>%
+  gather(new_sp_m014:newrel_f65, key = "keys", value = "Cases", na.rm = TRUE) %>%
+  mutate(keys = stringr::str_replace(keys, "newrel", "new_rel")) %>%
+  separate(keys, c("new", "type", "sexage"), sep = "_") %>%
+  select(-iso2, -iso3, -new) %>%
+  separate(sexage, c("sex", "age"), sep = 1)
+  
+  kable(head(who_final, 20), caption = "New WHO TB dataset")
+
+```
+
+**a) Explain why this line mutate(key = stringr::str_replace(key, "newrel", "new_rel"))**
+ 
+mutate -> Mutate function adds new variables and preserves existing; transmute drops existing variables.
+In **who** dataset, column data "newrel" and "new_rel" actually mean the same TB type.
+If we do not make it same, it will be treated as separate type. Also, we could not separate this into its implicit values.
+
+* This column names is represented as -->
+* * first 3 letters for "new" or "old" cases
+* * 2 letter for type of TB
+* * 1 letter and digits for sex and age group.
+
+if we don't make it consistent with formatting, it will only separate the keys which actually fits the formatting
+and gives error. So, it eventually make every other operations inconsistent and data will be UNTIDY.
+
+**b) How many entries are removed from the dataset when you set na.rm to true in the gather command (in this dataset). How else could those NA values be handled? Among these options, which do you think is the best way to handle those missing values for this dataset, and why?**
+
+```{r}
+count(who %>% gather(new_sp_m014:newrel_f65, key = "keys", value = "Cases", na.rm = FALSE)) - 
+  count(who %>% gather(new_sp_m014:newrel_f65, key = "keys", value = "Cases", na.rm = TRUE)
+    )
+```
+
+
+if we dont use na.rm, total observations would be 405440,
+with na.rm = TRUE, total observations would be 76046.
+329394 -> rows are removed.
+
+
+In who dataset missing values are of TB type entries.
+for example
+```{r}
+    dim(who[is.na(who$new_sp_m014) > 0,])
+    dim(who[(who$new_sp_m014) > 0,])
+```
+above is similar with other columns.
+
+Here, 4067 values are missing out of 6378.
+Difference -->
+
+```{r}
+
+count(who[(who$new_sp_m014) > 0,]) - count(who[is.na(who$new_sp_m014) > 0, ])
+
+```
+
+As we have more than 50% missing values, removing rows would be good option, as we don't have sufficient information to impute the missings. 
+If in case we have missing values, we could impute it with some other technique like mean depending on country.
+
+**c) Explain the difference between an explicit and implicit missing value, in general. Can you find any implicit missing values in this dataset, if so where?**
+
+Explicit missing values --> they are flagged with 'NA'
+Implicit missing values --> they are not present in dataset
+
+Implicit missing values as follows:
+```{r}
+    who_impl_1 <- who %>%
+    gather(new_sp_m014:newrel_f65, key = "keys", value = "Cases", na.rm = TRUE) %>%
+    mutate(keys = stringr::str_replace(keys, "newrel", "new_rel")) %>%
+    complete(keys, year, country)
+
+  kable(head(who_impl_1,20), caption = "Implicit Missing Values")
+```
+
+from this we can say, many countries don't have cases for the year, 
+so in data they completely remove that observation.
+
+Also, we have 
+```{r}
+    who_impl_2 <- who %>%
+    gather(new_sp_m014:newrel_f65, key = "keys", value = "Cases", na.rm = TRUE) %>%
+    mutate(keys = stringr::str_replace(keys, "newrel", "new_rel")) %>%
+    complete(keys, year)
+  kable(head(who_impl_2, 25), caption = "Implicit missing values 2")
+```
+
+We don't have any data for new_ep_f014 from 1980 to 1998 for any country.
+
+Explicit missing data - which we have seen in Que 2 previously.
+
+
+**d) Looking at the features (country, year, var, sex, age, cases) in the tidied data, are they all appropriately typed? Are there any features you think would be better suited as a different type? Why or why not?**
+
+I think, all variables are appropriately typed.
+But we can do better by doing the **factor** of sex. 
+As the type of gender will remain the same, and for the computational deriavation purpose this will be useful.
+
+```{r echo = FALSE, results = 'asis'}
+sex <- as.factor(who_final$sex)
+who_final <- data.frame(who_final, sex)
+
+kable(head(who_final, 10), caption = "WHO data")
+```
+
+
+
+**e) Explain in your own words what a gather operation is, and give an example of a situation when it might be useful. Do the same for spread.**
+
+* Gather ->
+When data is considered unstacked and a common attribute of concern is spread out across columns. To reformat the data such that these common attributes are gathered together as a single variable, the gather() function will take multiple columns and collapse them into key-value pairs, duplicating all other columns as needed.
+
+```{r}
+table_gather <- tibble(
+  'country' = c("India", "USA", "Brazil"),
+  `2000` = c(300, 960, 770),
+  `2010` =  c(150, 850, 990),
+  `2020` =  c(350, 450, 590)
+)
+
+kable(table_gather,caption = "GATHER")
+```
+
+In above example we have 2000, 2010, 2020 as different variable, but they actually shows YEAR, which we can combine into one variable, instead keeping three different.
+
+```{r}
+table_gather <-table_gather %>%
+  gather(`2000`, `2010`, `2020`, key = "year", value = "cases") %>% arrange(country)
+  
+kable(table_gather,caption = "GATHER")
+```
+
+Spreding -> Spreading is the opposite of gathering. When an observation is scattered across multiple rows. 
+For example, take table2: an observation is a country in a year, but each observation is spread across two rows.
+
+```{r}
+  kable(table2, caption = "SPREAD")
+```
+
+In above example column "type" contains multiple varibles, which we can defines separately. Here "count"" variable contains values.
+
+```{r}
+table2 <- table2 %>%
+    spread(key = type, value = count)
+  kable(table2, caption = "Spreding Example")
+```
+
+**f) Generate an informative visualization, which shows something about the data. Give a brief description of what it shows, and why you thought it was interesting.**
+
+```{r}
+g <- ggplot(who_final, aes(x = year, y = Cases)) + theme_light()
+who_cases <- g + geom_point(col = c("blue")) + 
+                    labs(title = "Cases vs Year")
+who_cases
+```
+we can see from above graph, from 1980 - 1994, we don't have much data of TB.
+
+* 1995 - 2001, we have almost linear data, not drastic difference.
+* 2002 - onwards, TB spread rates is so high.
+* In 2007, we have quite different data, that it actually reach 2,50,000 cases for a country, and for other its 15000. This data could be miscalculation.
+
+
+
+```{r}
+type_factor <- as.factor(who_final$type)
+who_cases_sex <- ggplot(who_final, aes(x = year, y = Cases, colour = factor(sex))) + theme_light() +
+                geom_point() +
+                facet_grid(rows = vars(type)) +
+                labs(title = "Cases")
+who_cases_sex
+```
+From above graph, we can deduce, females are more affected for different TB types as shown.
+
+* * Only for **rel** TB type, it first seen after 2010, where males are more affected than females.
+* * for **ep** cases, in 2007, it raises so high, but male and female are affected similarly.
+

@@ -1,0 +1,145 @@
+---
+title: "Assignment 5"
+author: "Mayur Andhare"
+date: "November 1, 2018"
+output:
+  pdf_document:
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 7
+  html_document:
+    df_print: paged
+---
+
+Part 1)
+
+```{r setup, warning=FALSE}
+library(jsonlite)
+library(dplyr)
+library(tm)
+library(caret)
+library(plyr)
+library(caTools)
+library(e1071)
+library(knitr)
+library(kableExtra)
+
+
+api <- "https://content.guardianapis.com/search?"
+key <- '55c2a082-8eb4-4921-940e-0a45ce0ea6b6'
+sections <- c("business", "food", "technology", "travel", "sport", "science")
+fields <- 'body'
+pagesize <- '50'
+pages <- 20
+results <- data.frame()
+
+```
+
+
+```{r}
+for (section in sections)
+{
+  print(section)
+  for(i in 1:20)
+  {
+    url <- paste(api, "api-key=", key, "&section=", section, "&show-fields=", fields, "&page-size=", pagesize, "&page=", i, sep = "")
+    web_data = fromJSON(url)
+    data <- as.data.frame(web_data$response$results, flatten = TRUE)
+    set <- as.data.frame(web_data$response$results$fields$body, flatten = TRUE)
+    data <- subset(data, select = -c(fields))
+    res <- cbind(data, set)
+    results <- rbind(results, res)
+  }
+}
+
+results <- rename(results, c("web_data$response$results$fields$body" = "body"))
+```
+
+
+Part 2)
+
+```{r}
+results$body <- gsub("<.*?>", "", results$body)
+results$body <- gsub("[[:punct:]]"," ",results$body)
+results$body <- gsub("[[:digit:]]","",results$body)
+results$body <- gsub("[^[:alnum:]]///","",results$body)
+results$body <- sapply(results$body, tolower)
+```
+
+
+```{r}
+results$body <- removeWords(results$body, stopwords())
+results$body <- gsub(pattern = "\\b[A-z]\\b{1}", replace = " ", results$body)
+results$body <- stripWhitespace(results$body)
+write.csv(results, "news_updated.csv")
+#results <- read.csv("news_updated.csv")
+str(results)
+```
+
+```{r}
+res <- subset(results, select = c(sectionName, body))
+
+res_corpus <- Corpus(VectorSource(res$body))
+res$body <- NULL
+#corpus_copy <- res_corpus
+corpus.tmp <- tm_map(res_corpus, stemDocument, language="english")
+corpus.tmp[[1]][1]$content
+#inspect(corpus.tmp)
+#corpus.final <- tm_map(corpus.tmp, content_transformer(stemCompletion), dictionary = corpus_copy)
+#inspect(corpus.final)
+
+```
+
+Part 3)
+
+```{r}
+res_dtm <- DocumentTermMatrix(corpus.tmp)
+inspect(res_dtm)
+res_dtm_final <- removeSparseTerms(res_dtm, sparse = 0.9499)
+inspect(res_dtm_final)
+vocab <- res_dtm_final[["dimnames"]][["Terms"]]
+res_dtm_mat <- as.matrix(res_dtm_final)
+res_final <- as.data.frame(res_dtm_mat)
+res <- cbind(res, res_final)
+```
+
+
+
+
+#First feature vector after feature reduction
+```{r}
+res[1,1:1000]
+
+```
+
+Part 4)
+
+```{r}
+
+set.seed(139)
+split = sample.split(res$sectionName, SplitRatio = 0.8)
+
+train_set <- subset(res, split == TRUE)
+test_set <- subset(res, split == FALSE)
+classifier <- naiveBayes(x = train_set[-1], y = as.factor(train_set$sectionName), laplace = 3)
+```
+
+#Traning Accuracy :- 
+```{r}
+y_pred_train <- predict(classifier, train_set[-1])
+cm_train <- table(train_set[, 1], y_pred_train)
+print(cm_train)
+c_matrix_train <- confusionMatrix(y_pred_train,as.factor(train_set[,1] ))
+print(c_matrix_train)
+
+```
+
+#Testing Accuracy :- 
+```{r}
+y_pred <- predict(classifier, test_set[-1])
+cm_test <- table(test_set[, 1], y_pred)
+print(cm_test)
+c_matrix_test <- confusionMatrix(y_pred,as.factor(test_set[,1] ))
+print(c_matrix_test)
+```
+

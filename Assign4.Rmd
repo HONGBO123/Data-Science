@@ -1,0 +1,259 @@
+---
+title: "Assignment 4"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  beamer_presentation: default
+  html_document:
+    df_print: paged
+author: "Mayur Andhare"
+date: "11 Oct 2018"
+---
+\fontfamily{cmr}
+\fontsize{12}{22}
+\fontseries{b}
+\selectfont
+\setmainfont{Segoe UI}
+\setmonofont{Segoe UI}
+
+
+```{r setup, echo=TRUE, warning=FALSE, message=FALSE} 
+    library(ggplot2)  
+    library(dplyr)
+    library(grid)
+    library(gridExtra)
+    library(MASS)
+    attach(Boston)
+```    
+** _Que.1)_ **
+**a) Produce a scatterplot matrix which includes all of the variables in the data set.**
+```{r}
+  auto <- read.csv("https://scads.eecs.wsu.edu/wp-content/uploads/2017/09/Auto.csv", na.strings = '?')
+  auto <- na.omit(auto)
+  pairs(auto[, 1:8], main = "Scatterplot of Auto")
+```
+**b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, which is qualitative.**
+```{r}
+cor(auto[, names(auto) !="name"])
+```
+**c) Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors.**
+```{r}
+  model_1 = lm(mpg ~. -name, data = auto)
+  summary(model_1)
+
+```
+i)
+The Displacement, Weight, Year and Origin have significant relationship to response, i.e. mpg.
+We can determine them by the P value, lower the P value, more is its significance. 
+\(Significance \propto\frac{1}{p} \)
+P value from 0, 00.1, 0.01, 0.05 are considered as high significance to the response.
+
+ii)
+It suggest than one increase in cylinder is decrease of 0.492276 in mpg. (and all other predictors remain constant)
+In other words, cars has less fuel efficiency with increase in cylinders.
+But here, we are considering all the predictors, significance of _cylinders_ is much less on response variable _mpg_.
+
+
+**d)Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?**
+```{r message=FALSE, echo=FALSE, out.width='.80\\linewidth', fig.width=6, fig.height=6}
+par(mfrow = c(2, 2))
+plot(model_1)
+
+```
+
+- The average of the Residual plot should be close to zero. Resuduals should be symmetrically distributed. But in above plot of Resuduals vs Fitted, we can see its non-linear and inconsistent. And, much deviation from fitted values. This indicates the presence of mild non-linearity in the data. 
+- The plot Standardized residuals vs. Theoretical Quartiles, all the points should be in red dotted line which indicated resuiduals are normally distributed. We see that most of the plots are on the line except at towards the end.
+- The plot of standardized residuals vs Leverage indicates the presence of leverage (higher than 2 or lower than 2) (point 327, point 394) and one high leverage point (point 14). A point outside the dashed line will be influential point and removal of that will affect the regression coefficients. 
+
+**e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?**
+```{r}
+  model_2 <- lm(mpg ~ weight:displacement+ displacement*horsepower+cylinders:displacement+ cylinders:weight, data = auto[, 1:8])
+  summary(model_2)
+```
+-->
+From the p-values, we can see that the interaction between (displacement and horsepower), (displacement and cylinders) is statistically significant, while the interaction between (weight and cylinders), (weight and displacement) is not.
+
+**f)Try transformations of the variables with X3 and log(X). Comment on your findings.**
+```{r warning=FALSE}
+h_c <- qplot((horsepower^3), mpg, data=auto, col = I("Magenta"), main = "mpg vs horsepower^3")
+d_c <- qplot((displacement^3), mpg, data=auto, col = I("Red"), main = "mpg vs displacement^3")
+w_c <- qplot((weight^3), mpg, data=auto, col = I("Blue"), main = "mpg vs weight^3")
+h_l <- qplot(log(horsepower), mpg, data=auto, col = I("Magenta"), main = "mpg vs log(horsepower)", 
+             geom = c("point", "smooth"), method="lm")
+d_l <- qplot(log(displacement), mpg,  data=auto, col = I("Red"), main = "mpg vs log(displacement)",
+             geom = c("point", "smooth"), method="lm")
+w_l <- qplot(log(weight), mpg, data=auto, col = I("Blue"), main = "mpg vs log(weight)",
+             geom = c("point", "smooth"), method="lm")
+
+hp_cube <- lm(mpg ~ I(horsepower^3), data=auto)
+summary(hp_cube)
+dis_cube <- lm(mpg ~ I(displacement^3), data=auto)
+summary(dis_cube)
+wt_cube <- lm(mpg ~ I(weight^3), data=auto)
+summary(wt_cube)
+hp_log <- lm(mpg ~ log(horsepower), data=auto)
+summary(hp_log)
+dis_log <- lm(mpg ~ log(displacement), data=auto)
+summary(dis_log)
+wt_log <- lm(mpg ~ log(weight), data=auto)
+summary(wt_log)
+
+grid.arrange(h_c, h_l, d_c, d_l, w_c, w_l, ncol=2)
+
+```
+The \(horsepower^{3}\), \(weight^{3}\), \(log(horsepower)\),  \(log(displacement)\),  \(log(weight)\) are all significant on responase variable mpg considering single regression. 
+Here, \(displacement^{3}\) is not significant.
+And from the graph, we can conclude that cube of variables(horsepower, displacement, weight) are inversely proportional. But if we look at log of predictors, we can see it shows, many of the points are along the line, only few of them are away from the _lm_ line.
+
+**_Que 2)_**
+**a. For each predictor, fit a simple linear regression model to predict the response. Include the code, but not the output for all models in your solution. In which of the models is there a statistically significant association between the predictor and the response? Considering the meaning of each variable, discuss thee relationship between crim and nox, chas, medv and dis in particular. How do these relationships differ?**
+
+```{r}
+  summary(lm(crim ~ chas, data = Boston))
+  summary(lm(crim ~ nox, data = Boston))
+  summary(lm(crim ~ medv, data = Boston))
+  summary(lm(crim ~ dis, data = Boston))
+  summary(lm(crim ~ zn, data = Boston))
+  summary(lm(crim ~ indus, data = Boston))
+  summary(lm(crim ~ rm, data = Boston))
+  summary(lm(crim ~ age, data = Boston))
+  summary(lm(crim ~ rad, data = Boston))
+  summary(lm(crim ~ tax, data = Boston))
+  summary(lm(crim ~ ptratio, data = Boston))
+  summary(lm(crim ~ black, data = Boston))
+```
+
+```{r}
+nox_plot <- qplot(crim, nox, data=Boston, col = I("Magenta"))
+dis_plot <- qplot(crim, dis, data=Boston, col = I("Blue"))
+medv_plot <- qplot(crim, medv, data=Boston, col = I("Green"))
+chas_plot <- qplot(crim, chas, data=Boston, col = I("Red"))
+grid.arrange(nox_plot, dis_plot, medv_plot, chas_plot)
+```
+
+Except the Charles River Dummy, all other predictors have significant impact on response variable, i.e. crim(per capita crime rate by town), as the P value of chas is much greater so it won't be significant, also when we look at the scatterplot of chas vs crim, points are at the extremity, so its not useful to predict crime. When looking at the response variables and crime in simple scatter plots, one can see how a general linear regression with these variables would allow for a better prediction of crime than simply using the mean of crime (except the Charles River dummy variable). That being said, while almost every variable is statistically significant, R-squared is very low, and so these predictors only describe a small amount of the variation in the response.
+
+**b. Fit a multiple regression model to predict the response using all of the predictors. Describe your results. For which predictors can we reject the null hypothesis H0 : ??j = 0?**
+```{r}
+  summary(lm(formula = crim ~ . - crim, data = Boston))
+```
+
+When fitting a multiple regression model, only a small number of variables are found to be statistically signficant: dis and rad at the .001 level, medv at the .01 level, and zn and black at the .05 level of P value. 
+For every other variable, we now fail to reject the null hypothesis. R-squared is also much higher using a multiple regression model than any of the predictors on their own, meaning we better explain more of the variance in the outcome.
+
+
+**c)How do your results from (a) compare to your results from (b)? Create a plot displaying the univariate regression coefficients from (a) on the x-axis, and the multiple regression coefficients from (b) on the y-axis.**
+
+_Univariated Regression Coefficients_ -->  
+```{r}
+univ_cof <- lm(crim ~ zn, data = Boston)$coefficients[2]
+univ_cof <- append(univ_cof, lm(crim ~ indus, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ chas, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ nox, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ rm, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ age, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ dis, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ rad, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ tax, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ ptratio, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ black, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ lstat, data = Boston)$coefficients[2])
+univ_cof <- append(univ_cof, lm(crim ~ medv, data = Boston)$coefficients[2])
+univ_cof
+
+```
+
+_Multivariated Regression Coefficients_ -->  
+```{r}
+multi_cof <- (lm(crim ~ . - crim, data = Boston))
+multi_cof <- multi_cof$coefficients[2:14]
+multi_cof
+
+qplot(univ_cof, multi_cof, main = "Univariate vs. Multiple Regression Coefficients", 
+    xlab = "Univariate Coef.", ylab = "Multiple Coef.", col = I("Red"))
+```
+
+
+Univariated Prediction based on nox
+```{r}
+summary(lm(crim ~ nox, data = Boston))$coefficients[1,]
+
+```
+
+multiple coefficients -> only nox is shown
+```{r}
+summary(lm(crim ~ ., data = Boston))$coefficients[5,]
+
+```
+
+
+we can say from above plot, predictors can change its its significance when we calculate multiple predictors at a time.
+As we can see from above results,  coefficients of nitrogen oxides concentrationis changed drastically from univariated to multiple regression. 
+\(\beta_{multiple}(nox)\) = -10.313535
+\(\beta_{single}(nox)\) = 31.24853120
+
+In univariated, P value -> 5.076814e-15 
+In mupliple, P value -> 0.051152,
+for the same predictor, changes in P is significant, lower the P value, more is its significance.
+
+** d) Is there evidence of non-linear association between any of the predictors and the response? **
+```{r results='hide'}
+summary(lm(crim ~ poly(zn, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(indus, 3), data = Boston))$coefficients
+#summary(lm(crim ~ poly(chas, 3), data = Boston))$coefficients
+summary(lm(crim ~ chas + I(chas^2) + I(chas^3), data = Boston))$coefficients
+summary(lm(crim ~ poly(nox, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(rm, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(age, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(dis, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(rad, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(tax, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(ptratio, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(black, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(medv, 3), data = Boston))$coefficients
+summary(lm(crim ~ poly(lstat, 3), data = Boston))$coefficients
+```
+
+
+The first thing to note is that with the chas variable, we get NA values for the squared and cubed term. This makes sense as chas Charles River dummy variable (= 1 if tract bounds river; 0 otherwise), and these values will not change if they are squared or cubed.
+
+With the variables indus, nox, dis, ptratio, and medv, there is evidence of a non-linear relationship, as each of these variables squared and cubed terms is found to be statistically signficant. 
+Age also appears to have a non-linear relationship, and once squared-age and cubed-age are brought into the model, linear age becomes statistically insignficant.
+
+For every other variable, we do not find evidence of a non-linear relationship between the predictor and outcome variables.
+
+** _Que 3)_ An important assumption of the linear regression model is that the error terms are uncorrelated (independent). But error terms can sometimes be correlated, especially in time-series data.**
+
+
+**a)**
+
+* i)Regression Coefficients ->
+Coefficients beta will vary more than they would if there is no correlation.
+The Coefficients that seem to be significant may be insignificant, if there is correlation among error terms. As t-values will be higher than their true value. Correlation increases variance of coefficient estimates. This will make the results at best unclear.
+
+* ii)the standard error of regression coefficients ->
+The standard errors that are computed for estimated regression coefficients are based on the assumption of uncorrelated error terms.
+If there is correlation among the error terms, then estimated standard errors will tend to underestimate the true standard errors.
+correlation increases varaiance of coefficients estimates, this makes true value of standard error larger.
+
+* iii) confidence intervals ->
+If we have correlation among error terms, then Confidence interval will be narrower than they should be.
+
+
+**b)**
+
+Reformulate the model to eliminate the time series Correlation. This can be done 
+by adding a missing independent variable or by changing the functional
+form of the regression. 
+Still, there are some situations in which Correlation cannot be eliminated by changing the model. 
+In these cases, a generalized difference equation is used. As foolows -->
+
+\(Y_{t} - \rho Y_{t-1} = B_{0}(1-\rho) + B_{1}(X_{t} - \rho X_{t-1}) + u_{t} \)
+
+An estimates of \(\rho\) must be found to estimate generalized difference equation.
+To calculate \(\rho\) either Cochrane-Orcutt method or the AR(1) method can be used.
+repeat the process until you get \(\rho\) stays same.
+
+AR(1) method is a non-linear method which estimates \(\rho\) and other coefficients all at once.
+
+The coefficients estimates are obtained by both the methods are usually similar and close to each other.
